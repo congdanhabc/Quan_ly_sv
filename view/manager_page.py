@@ -9,6 +9,8 @@ class ManagerPage:
         self.content_frame = content_frame
         self.schedule_controller = ScheduleController()
         self.absent_list = self.schedule_controller.get_absent_list()
+        self.email_manager = AbsenteeManager()
+
 
         for widget in self.content_frame.winfo_children():
             widget.destroy()
@@ -69,7 +71,7 @@ class ManagerPage:
         
     def send_absent_warning(self):
         try:
-            students_missing_email = send_absent_warning(self.absent_list)
+            students_missing_email = self.email_manager.send_absent_warning(self.absent_list)
             if students_missing_email: 
                 dialog = tk.Toplevel(self.content_frame) 
                 dialog.title("Danh sách sinh viên thiếu email") 
@@ -87,7 +89,7 @@ class ManagerPage:
 
     def send_excel(self):
         try:
-            send_excel_report(self.absent_list)
+            self.email_manager.send_excel_report(self.absent_list)
             tk.messagebox.showinfo("Thành công", "Gửi file Excel thành công")
         except Exception as e:
             print(e)
