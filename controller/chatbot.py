@@ -104,12 +104,97 @@ class Chatbot:
         response = self.model.generate_content(prompt)
         return response.text.strip()
 
-    def add_student(self, ma_sinh_vien: str, ho_ten: str, gioi_tinh: str, ngay_sinh: str):
-        """Adds a student to the student database."""
-        notify = "Lỗi không xác định, thêm sinh viên không thành công"
-        if self.student_controller.add_student(ma_sinh_vien, ho_ten, gioi_tinh, ngay_sinh):
-            notify = f"Đã thêm sinh viên có mã {ma_sinh_vien}."
-        return notify
+    def add_student(self, query: str):
+        existing_info = {}
+        prompt_prefix = ''
+        while True:
+            if len(existing_info) > 0:
+                prompt_prefix = f"Thông tin hiện có:\n"
+                for key, value in existing_info.items():
+                    prompt_prefix += f"{key}: {value}\n"
+
+            prompt = f"""
+                    Bạn cần xác định các thông tin sau từ câu hỏi của tôi: Mã sinh viên, Họ tên, Giới tính, Ngày sinh của sinh viên.
+                    Trả lời thông tin Mã sinh viên, Họ tên, Giới tính, Ngày sinh. Nếu thông tin nào thiếu thì hãy hỏi lại tôi
+                    Sau khi có đủ thông tin, xác nhận lại thông tin người dùng.
+                    Nếu người dùng xác nhận thông tin là chính xác, phản hồi lại như ví dụ bên dưới.
+                    Ví dụ:
+                    Mã sinh viên: 0533
+                    Họ tên: Nguyễn Văn A
+                    Giới tính: Nam
+                    Ngày sinh: 05/11/2003
+                    Xác nhận thông tin: chính xác
+
+                    Nếu người dùng muốn dừng quá trình thêm sinh viên, trả lời "dừng thêm sinh viên".
+
+                    {prompt_prefix}
+
+                    Câu hỏi: {query}
+                    """
+            response = self.model.generate_content(prompt)
+            response_text = response.text.strip()
+            if "dừng thêm sinh viên" in response_text.lower():
+                return "Bạn đã dừng việc thêm sinh viên."
+            if "Xác nhận thông tin: chính xác" in response_text:
+                try:
+                    ma_sinh_vien = response_text.split("Mã sinh viên: ", "\n")[1]
+                    ho_ten = response_text.split("Tên sinh viên: ", "\n")[1]
+                    gioi_tinh = response_text.split("Tên sinh viên: ", "\n")[1]
+                    ngay_sinh = response_text.split("Ngày sinh: ")[1]
+                    
+                    self.student_controller.add_student(ma_sinh_vien, ho_ten, gioi_tinh, ngay_sinh)
+                    response_text = f"Đã thêm sinh viên có mã sinh viên: {ma_sinh_vien} thành công."
+                    return response_text
+                except:
+                    response_text = "Lỗi không xác định, thêm sinh viên không thành công."
+                             
+
+    def search_student(self, query: str, context: str):
+        prompt = f"""
+                {context}
+                Bạn là là Nghĩa ngu, một trợ lý ảo thông minh. Bạn có khả năng ghi nhớ và sử dụng thông tin từ các cuộc trò chuyện trước đây. Nếu có câu hỏi nào về các thông tin từ cuộc trò chuyện của tôi và bạn trong quá khứ, hãy cung cấp cho tôi sự hỗ trợ tốt nhất.
+
+                Hãy xác định tên sinh viên, mã sinh viên được đề cập trong câu hỏi của tôi
+                Nếu trong câu hỏi đã có mã sinh viên, trả về cách tìm kiếm là "tìm kiếm theo mã" và mã sinh viên.
+                Nếu trong câu hỏi đã có tên sinh viên, trả về cách tìm kiếm là "tìm kiếm theo tên" và tên sinh viên.
+                Nếu trong câu hỏi chưa có tên sinh viên hoặc mã sinh viên, bạn cần yêu cầu tôi cung cấp tên hoặc mã sinh viên.
+
+                Câu hỏi: {query}
+                """
+        response = self.model.generate_content(prompt)            
+        response_text = response.text.strip()
+        # Attempt to extract student info from response
+        if "tìm kiếm theo tên" in response_text.lower():
+            try:
+                # Improved extraction: split by "tên:" and get the LAST part (handling extra text)
+                name = response_text.split("Tên sinh viên: ")[1]
+                if name is not None:
+                    found_students = self.search_student_by_name(name)
+                    if found_students:
+                        response_text = "Danh sách sinh viên tìm thấy:\n"
+                        for student in found_students:
+                            response_text += f"Mã sinh viên: {student.get('MaSinhVien')}, Tên: {student.get('HoTen')}, Giới tính: {student.get('GioiTinh')}, Ngày sinh {student.get('NgaySinh')}\n"
+                    else:
+                        response_text = "Không tìm thấy sinh viên nào có tên này."
+                else:
+                    response_text = "Bạn muốn tìm sinh viên bằng tên hay mã số?"
+            except:
+                response_text = "Có lỗi khi tìm sinh viên"
+        elif "tìm kiếm theo mã" in response_text.lower():
+            try:
+                # Improved extraction: split by "tên:" and get the LAST part (handling extra text)
+                ma_sinh_vien = response_text.split("Mã sinh viên: ")[1]
+                if ma_sinh_vien is not None:
+                    profile = self.get_student_profile(ma_sinh_vien)
+                    if profile:
+                        response_text = f"Thông tin sinh viên:\nMã sinh viên: {profile.get('MaSinhVien')}\nHọ tên: {profile.get('HoTen')}\nGiới tính: {profile.get('GioiTinh')}\nNgày sinh: {profile.get('NgaySinh')}"
+                    else:
+                        response_text = "Không tìm thấy sinh viên với mã số này."
+                else:
+                    response_text = "Bạn muốn tìm sinh viên bằng tên hay mã số?"
+            except:
+                response_text = "Có lỗi khi tìm sinh viên"
+        return response_text
 
     def search_student_by_name(self, name: str) -> List[Dict]:
         """Searches for students by name and return a list of student's names and ids."""
@@ -136,90 +221,10 @@ class Chatbot:
 
         # Prepare prompt and generate response
         if option == "1": # Add student
-            prompt = f"""
-                {context}
-                Bạn là là Nghĩa ngu, một trợ lý ảo thông minh. Bạn có khả năng ghi nhớ và sử dụng thông tin từ các cuộc trò chuyện trước đây. Nếu có câu hỏi nào về các thông tin từ cuộc trò chuyện của tôi và bạn trong quá khứ, hãy cung cấp cho tôi sự hỗ trợ tốt nhất.
-
-                Câu hỏi: {query}
-
-                Bạn cần xác định các thông tin sau từ tôi: mã sinh viên, họ tên, giới tính, ngày sinh của sinh viên. Nếu chưa có đủ thông tin cần thiết, hãy hỏi lại tôi.
-                Sau khi có đủ thông tin, bạn sẽ sử dụng hàm add_student() để thêm sinh viên vào hệ thống.
-                Bạn nên hỏi người dùng cho đến khi có đủ các thông tin cần thiết.
-                Nếu đã có đủ thông tin, trả về thông báo đã thêm sinh viên.
-                """
-            response = self.model.generate_content(prompt)
-            response_text = response.text.strip()
-
-            # Attempt to extract student info from response
-            if "mã sinh viên" in response_text.lower() and "họ tên" in response_text.lower() and "giới tính" in response_text.lower() and "ngày sinh" in response_text.lower():
-                try:
-                    parts = response_text.split("\n")
-                    ma_sinh_vien = ""
-                    ho_ten = ""
-                    gioi_tinh = ""
-                    ngay_sinh = ""
-                    for part in parts:
-                        if "mã sinh viên" in part.lower():
-                            ma_sinh_vien = part.split(":")[-1].strip()
-                        if "họ tên" in part.lower():
-                            ho_ten = part.split(":")[-1].strip()
-                        if "giới tính" in part.lower():
-                            gioi_tinh = part.split(":")[-1].strip()
-                        if "ngày sinh" in part.lower():
-                            ngay_sinh = part.split(":")[-1].strip()
-
-                    if ma_sinh_vien and ho_ten and gioi_tinh and ngay_sinh:
-                        add_student_response = self.add_student(ma_sinh_vien, ho_ten, gioi_tinh, ngay_sinh)
-                        response_text = add_student_response
-                except:
-                    response_text = "Tôi cần thêm thông tin để thêm sinh viên. Vui lòng cung cấp mã sinh viên, họ tên, giới tính và ngày sinh."
-
+            response_text = self.add_student(query)
 
         elif option == "2": # Find student
-            prompt = f"""
-                {context}
-                Bạn là là Nghĩa ngu, một trợ lý ảo thông minh. Bạn có khả năng ghi nhớ và sử dụng thông tin từ các cuộc trò chuyện trước đây. Nếu có câu hỏi nào về các thông tin từ cuộc trò chuyện của tôi và bạn trong quá khứ, hãy cung cấp cho tôi sự hỗ trợ tốt nhất.
-
-                Hãy xác định tên sinh viên, mã sinh viên được đề cập trong câu hỏi của tôi
-                Nếu trong câu hỏi đã có mã sinh viên, trả về cách tìm kiếm là "tìm kiếm theo mã" và mã sinh viên.
-                Nếu trong câu hỏi đã có tên sinh viên, trả về cách tìm kiếm là "tìm kiếm theo tên" và tên sinh viên.
-                Nếu trong câu hỏi chưa có tên sinh viên hoặc mã sinh viên, bạn cần yêu cầu tôi cung cấp tên hoặc mã sinh viên.
-
-                Câu hỏi: {query}
-                """
-            response = self.model.generate_content(prompt)            
-            response_text = response.text.strip()
-            # Attempt to extract student info from response
-            if "tìm kiếm theo tên" in response_text.lower():
-                try:
-                    # Improved extraction: split by "tên:" and get the LAST part (handling extra text)
-                    name = response_text.split("Tên sinh viên: ")[1]
-                    if name is not None:
-                        found_students = self.search_student_by_name(name)
-                        if found_students:
-                            response_text = "Danh sách sinh viên tìm thấy:\n"
-                            for student in found_students:
-                                response_text += f"Mã sinh viên: {student.get('MaSinhVien')}, Tên: {student.get('HoTen')}, Giới tính: {student.get('GioiTinh')}, Ngày sinh {student.get('NgaySinh')}\n"
-                        else:
-                            response_text = "Không tìm thấy sinh viên nào có tên này."
-                    else:
-                        response_text = "Bạn muốn tìm sinh viên bằng tên hay mã số?"
-                except:
-                    response_text = "Có lỗi khi tìm sinh viên"
-            elif "tìm kiếm theo mã" in response_text.lower():
-                try:
-                    # Improved extraction: split by "tên:" and get the LAST part (handling extra text)
-                    ma_sinh_vien = response_text.split("Mã sinh viên: ")[1]
-                    if ma_sinh_vien is not None:
-                        profile = self.get_student_profile(ma_sinh_vien)
-                        if profile:
-                            response_text = f"Thông tin sinh viên:\nMã sinh viên: {profile.get('MaSinhVien')}\nHọ tên: {profile.get('HoTen')}\nGiới tính: {profile.get('GioiTinh')}\nNgày sinh: {profile.get('NgaySinh')}"
-                        else:
-                            response_text = "Không tìm thấy sinh viên với mã số này."
-                    else:
-                        response_text = "Bạn muốn tìm sinh viên bằng tên hay mã số?"
-                except:
-                    response_text = "Có lỗi khi tìm sinh viên"
+            response_text = self.search_student(query, context)
         else: # option is "3" (other)
             prompt = f"""
             {context}
