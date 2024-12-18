@@ -1,11 +1,12 @@
 from controller.student import StudentController
 from controller.importExcel import import_excel
 from view.profile_page import ProfilePage
-
+from view.chatbot_view import ChatbotView
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from tkcalendar import DateEntry
 from datetime import date, datetime
+from PIL import ImageTk, Image
 
 class HomePage:
     def __init__(self, content_frame):
@@ -30,6 +31,15 @@ class HomePage:
         # Tạo khung cho các chức năng
         self.function_frame = tk.Frame(self.home_frame, bg="#1c1c1c")
         self.function_frame.pack(pady=20)
+
+        chatbot_icon = Image.open("assets/chatbot.png")  # Thay đổi đường dẫn icon
+        chatbot_icon = chatbot_icon.resize((30, 30), Image.LANCZOS)
+        self.chatbot_icon = ImageTk.PhotoImage(chatbot_icon)
+        
+        chatbot_button = tk.Button(top_bar, image=self.chatbot_icon, 
+                                command=self.open_chatbot, 
+                                bg="#2c2c2c", bd=0)
+        chatbot_button.pack(side="right", padx=10)
 
         # Chức năng tìm kiếm
         tk.Label(self.function_frame, text="Tìm kiếm sinh viên", bg="#1c1c1c", fg="white", font=("Arial", 12)).grid(row=0, column=0, padx=10, pady=5)
@@ -72,6 +82,11 @@ class HomePage:
         self.result_tree.tag_configure('oddrow', background='#e6e6e6')
 
         self.result_tree.pack(fill="both", expand=True, padx=10, pady=10)
+
+    def open_chatbot(self):
+        # Tạo chatbot view với root là cửa sổ chính
+        root = self.content_frame.winfo_toplevel()
+        ChatbotView(root)
 
     def update_search_results(self):
         # Xóa nội dung cũ
