@@ -4,6 +4,7 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase 
 from email import encoders 
 import os
+import tkinter as tk
 import pandas as pd
 import threading
 from queue import Queue
@@ -141,51 +142,110 @@ class AbsenteeManager:
 
     def send_bulk_emails(self, absent_list):
         """
-        Gửi email hàng loạt cho danh sách sinh viên vắng mặt.
+        Gửi email hàng loạt với nội dung được chỉnh sửa trước khi gửi.
         Args:
-            absent_list (list): Danh sách sinh viên vắng mặt, mỗi mục là một dictionary chứa thông tin sinh viên.
+            absent_list (list): Danh sách sinh viên vắng mặt.
         Returns:
-            tuple: (số email thành công, số email thất bại, danh sách lỗi)
+            tuple: (success_count, failure_count, error_list)
         """
-        success_count = 0
-        failure_count = 0
-        error_list = []
+        results = {"success": 0, "failure": 0, "errors": []}
+        
+        def confirm_bulk_send():
+            nonlocal results
+            subject = subject_entry.get()
+            message_template = message_text.get("1.0", tk.END).strip()
+            
+            for student in absent_list:
+                email = student.get("EmailSinhVien")
+                if self.is_valid_email(email):
+                    try:
+                        message = message_template.format(
+                            TenSinhVien=student["TenSinhVien"],
+                            TenMonHoc=student["TenMonHoc"]
+                        )
+                        self.email_sender.send_email(email, subject, message)
+                        results["success"] += 1
+                    except Exception as e:
+                        results["failure"] += 1
+                        results["errors"].append(
+                            f"{student['MaSinhVien']} - {student['TenSinhVien']}: {str(e)}"
+                        )
+                else:
+                    results["failure"] += 1
+                    results["errors"].append(
+                        f"{student['MaSinhVien']} - {student['TenSinhVien']}: "
+                        f"Email không hợp lệ ({email})."
+                    )
+            editor_window.destroy()
 
-        for student in absent_list:
-            email = student.get("EmailSinhVien")
-            if self.is_valid_email(email):
-                subject = "Cảnh báo học vụ: Vắng mặt vượt quá 50%"
-                message = f"""Sinh viên: {student['TenSinhVien']} đã vắng trên 50% số buổi học môn {student['TenMonHoc']}.\n
-    Yêu cầu sinh viên đi học nghiêm túc hơn nếu không sẽ bị cấm thi."""
-                try:
-                    self.email_sender.send_email(email, subject, message)
-                    success_count += 1
-                except Exception as e:
-                    failure_count += 1
-                    error_list.append(f"{student['MaSinhVien']} - {student['TenSinhVien']}: {str(e)}")
-            else:
-                failure_count += 1
-                error_list.append(f"{student['MaSinhVien']} - {student['TenSinhVien']}: Email không hợp lệ ({email}).")
-
-        return success_count, failure_count, error_list
-
+        editor_window = tk.Toplevel()
+        editor_window.title("Chỉnh sửa nội dung email hàng loạt")
+        editor_window.geometry("600x400")
+        
+        tk.Label(editor_window, text="Chủ đề:").pack(padx=10, pady=5)
+        subject_entry = tk.Entry(editor_window, width=80)
+        subject_entry.insert(0, "Cảnh báo học vụ: Vắng mặt vượt quá 50%")
+        subject_entry.pack(padx=10, pady=5)
+        
+        tk.Label(editor_window, text="Nội dung email (sử dụng {TenSinhVien} và {TenMonHoc} để cá nhân hóa):").pack(padx=10, pady=5)
+        message_text = tk.Text(editor_window, wrap=tk.WORD, height=15)
+        message_text.insert(
+            tk.END,
+            "Sinh viên: {TenSinhVien} đã vắng trên 50% số buổi học môn {TenMonHoc}.\n"
+            "Yêu cầu sinh viên đi học nghiêm túc hơn nếu không sẽ bị cấm thi."
+        )
+        message_text.pack(padx=10, pady=5, fill=tk.BOTH, expand=True)
+        tk.Button(editor_window, text="Xác nhận gửi", command=confirm_bulk_send).pack(pady=10)
+        
+        editor_window.wait_window()  # Đợi cửa sổ đóng
+        return results["success"], results["failure"], results["errors"]
 
     def send_email_for_student(self, student_info):
         """
-        Gửi email cho một sinh viên cụ thể.
+        Gửi email cho một sinh viên với nội dung được chỉnh sửa trước khi gửi.
         Args:
             student_info (dict): Thông tin sinh viên bao gồm email và các dữ liệu cần thiết.
+        Returns:
+            tuple: (success, message)
         """
         email = student_info.get("EmailSinhVien")
         if not self.is_valid_email(email):
             return False, f"Email không hợp lệ: {email}"
+            
+        result = {"success": False, "message": ""}
+        
+        def confirm_send():
+            nonlocal result
+            subject = subject_entry.get()
+            message = message_text.get("1.0", tk.END).strip()
+            try:
+                self.email_sender.send_email(email, subject, message)
+                result["success"] = True
+                result["message"] = f"Email đã gửi thành công đến {email}."
+            except Exception as e:
+                result["success"] = False
+                result["message"] = f"Không thể gửi email: {str(e)}"
+            editor_window.destroy()
 
-        try:
-            subject = "Cảnh báo học vụ: Vắng mặt vượt quá 50%"
-            message = f"""Sinh viên: {student_info['TenSinhVien']} đã vắng trên 50% số buổi học môn {student_info['TenMonHoc']}.\n
-    Yêu cầu sinh viên đi học nghiêm túc hơn nếu không sẽ bị cấm thi."""
+        editor_window = tk.Toplevel()
+        editor_window.title(f"Chỉnh sửa email - {student_info['TenSinhVien']}")
+        editor_window.geometry("600x400")
+        
+        tk.Label(editor_window, text="Chủ đề:").pack(padx=10, pady=5)
+        subject_entry = tk.Entry(editor_window, width=80)
+        subject_entry.insert(0, "Cảnh báo học vụ: Vắng mặt vượt quá 50%")
+        subject_entry.pack(padx=10, pady=5)
+        
+        tk.Label(editor_window, text="Nội dung email:").pack(padx=10, pady=5)
+        message_text = tk.Text(editor_window, wrap=tk.WORD, height=15)
+        message_text.insert(
+            tk.END,
+            f"Sinh viên: {student_info['TenSinhVien']} đã vắng trên 50% số buổi học môn {student_info['TenMonHoc']}.\n"
+            "Yêu cầu sinh viên đi học nghiêm túc hơn nếu không sẽ bị cấm thi."
+        )
+        message_text.pack(padx=10, pady=5, fill=tk.BOTH, expand=True)
+        tk.Button(editor_window, text="Xác nhận gửi", command=confirm_send).pack(pady=10)
+        
+        editor_window.wait_window()  # Đợi cửa sổ đóng
+        return result["success"], result["message"]
 
-            self.email_sender.send_email(email, subject, message)
-            return True, f"Email đã gửi đến {email}."
-        except Exception as e:
-            return False, str(e)
