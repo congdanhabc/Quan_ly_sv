@@ -1,19 +1,20 @@
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
-from controller.chatbot_controller import ChatbotController
+from controller.chatbot import Chatbot
 
 class ChatbotView:
     def __init__(self, root):
         self.root = root
-        self.controller = ChatbotController(self)
+        self.chatbot = Chatbot()
+        self.user_id = "customer_bot"
         
         self.chatbot_window = tk.Toplevel(root)
         self.chatbot_window.title("AI Chatbot")
         self.chatbot_window.geometry("500x600")
         
         # Khung hiển thị tin nhắn
-        self.chat_display = tk.Text(self.chatbot_window, state='disabled', wrap=tk.WORD)
+        self.chat_display = tk.Text(self.chatbot_window, state='disabled', wrap=tk.WORD, font=("Arial", 12))
         self.chat_display.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
         # Khung nhập tin nhắn
@@ -37,11 +38,16 @@ class ChatbotView:
         # Nút gửi
         send_button = tk.Button(input_frame, text="Gửi", command=self.send_message)
         send_button.pack(side=tk.RIGHT, padx=5)
+
+        self.update_chat_display("Chatbot: Chào bạn, đây là AI chatbot! Bạn cần tôi giúp gì ?")
     
     def send_message(self):
         message = self.message_entry.get()
-        self.controller.send_message(message)
+        self.update_chat_display("\nNgười dùng: " + message)
+        # Handle the query and print the response
+        response = self.chatbot.handle_customer_query(self.user_id, message)
         self.message_entry.delete(0, tk.END)
+        self.update_chat_display("\nChatbot: " + response)
     
     def start_speech_recognition(self):
         self.controller.start_speech_recognition()

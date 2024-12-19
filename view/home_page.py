@@ -32,8 +32,8 @@ class HomePage:
         self.function_frame = tk.Frame(self.home_frame, bg="#1c1c1c")
         self.function_frame.pack(pady=20)
 
-        chatbot_icon = Image.open("assets/chatbot.png")  # Thay đổi đường dẫn icon
-        chatbot_icon = chatbot_icon.resize((30, 30), Image.LANCZOS)
+        chatbot_icon = Image.open("assets/chatbot1.png")  # Thay đổi đường dẫn icon
+        chatbot_icon = chatbot_icon.resize((50, 50), Image.LANCZOS)
         self.chatbot_icon = ImageTk.PhotoImage(chatbot_icon)
         
         chatbot_button = tk.Button(top_bar, image=self.chatbot_icon, 
