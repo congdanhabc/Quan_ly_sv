@@ -1,5 +1,5 @@
 from controller.schedule import ScheduleController
-from controller.send_mail import send_absent_warning, send_excel_report
+from controller.send_mail import AbsenteeManager
 
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
