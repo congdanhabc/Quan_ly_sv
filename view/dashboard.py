@@ -2,6 +2,8 @@ from view.home_page import HomePage
 from view.manager_page import ManagerPage
 from PIL import Image, ImageTk
 import tkinter as tk
+from tkinter import messagebox
+from controller.speech_controller import recognize_speech, VoiceRecognitionWindow
 
 class Dashboard:
     def __init__(self):
@@ -26,6 +28,10 @@ class Dashboard:
                 "sidebar_bg": "#f0f0f0"
             }
         }
+
+        # Khởi tạo biến để theo dõi trang hiện tại
+        self.current_page = None
+        self.chatbot_window = None
         
         # Áp dụng theme ban đầu
         self.apply_theme()
@@ -99,7 +105,7 @@ class Dashboard:
             image=self.micro_icon,
             bg=colors["sidebar_bg"],
             bd=0,
-            command=self.open_chatbot
+            command=self.open_voice_recognition
         )
         self.micro_button.pack(side="left", padx=10)
 
@@ -146,32 +152,119 @@ class Dashboard:
         # Hiển thị lại trang chính hoặc giao diện hiện tại
         self.home_page()
 
-    def open_chatbot(self):
-        # Tạo cửa sổ mới cho chatbot
-        chatbot_window = tk.Toplevel(self.root)
-        chatbot_window.title("Chatbot")
-        chatbot_window.geometry("400x200+500+300")
-        chatbot_window.configure(bg=self.get_current_theme()["bg"])
+    # def open_chatbot(self):
+    #     # Đóng cửa sổ chatbot cũ nếu có
+    #     if self.chatbot_window:
+    #         self.chatbot_window.destroy()
 
-        tk.Label(
-            chatbot_window,
-            text="Xin chào, tôi là Chatbot, bạn cần tôi giúp gì?",
-            bg=self.get_current_theme()["bg"],
-            fg=self.get_current_theme()["fg"],
-            font=("Arial", 14),
-            wraplength=380
-        ).pack(expand=True, padx=20, pady=20)
+    #     # Tạo cửa sổ mới cho chatbot
+    #     self.chatbot_window = tk.Toplevel(self.root)
+    #     self.chatbot_window.title("Nhận diện giọng nói")
+    #     self.chatbot_window.geometry("400x300+500+300")
+    #     self.chatbot_window.configure(bg=self.get_current_theme()["bg"])
+        
+    #     # Thêm label hướng dẫn
+    #     tk.Label(
+    #         self.chatbot_window,
+    #         text="Nói 'trợ giúp' để xem danh sách lệnh",
+    #         bg=self.get_current_theme()["bg"],
+    #         fg=self.get_current_theme()["fg"],
+    #         font=("Arial", 12)
+    #     ).pack(pady=10)
+        
+    #     # Label hiển thị kết quả
+    #     self.result_label = tk.Label(
+    #         self.chatbot_window,
+    #         text="Kết quả nhận diện sẽ hiển thị tại đây",
+    #         bg=self.get_current_theme()["bg"],
+    #         fg=self.get_current_theme()["fg"],
+    #         font=("Arial", 12),
+    #         wraplength=350
+    #     )
+    #     self.result_label.pack(pady=20)
 
-        tk.Button(
-            chatbot_window,
-            text="Đóng",
-            bg=self.get_current_theme()["button_bg"],
-            fg=self.get_current_theme()["fg"],
-            command=chatbot_window.destroy
-        ).pack(pady=10)
+    #     tk.Label(
+    #         self.chatbot_window,
+    #         text="Đang lắng nghe... Hãy nói để thực hiện hành động!",
+    #         bg=self.get_current_theme()["bg"],
+    #         fg=self.get_current_theme()["fg"],
+    #         font=("Arial", 12),
+    #         wraplength=380
+    #     ).pack(expand=True, padx=20)
+
+    #     # Nút điều khiển
+    #     button_frame = tk.Frame(
+    #         self.chatbot_window,
+    #         bg=self.get_current_theme()["bg"]
+    #     )
+    #     button_frame.pack(pady=20)
+
+    #     tk.Button(
+    #         button_frame,
+    #         text="Bắt đầu",
+    #         bg="lightblue",
+    #         fg="black",
+    #         command=self.start_recognition
+    #     ).pack(side="left", padx=10)
+
+    #     tk.Button(
+    #         button_frame,
+    #         text="Đóng",
+    #         bg="lightcoral",
+    #         fg="black",
+    #         command=self.chatbot_window.destroy
+    #     ).pack(side="left", padx=10)
+
+    # def start_recognition(self):
+    #     """Hàm khởi động nhận diện giọng nói."""
+    #     recognize_speech(self, self.update_result)
+
+    # def update_result(self, text):
+    #     """Cập nhật kết quả nhận diện lên giao diện."""
+    #     if hasattr(self, 'result_label'):
+    #         self.result_label.config(text=f"Kết quả: {text}")
+
+    def export_data(self, file_type="excel"):
+        """Xuất dữ liệu ra file."""
+        if self.current_page:
+            # Gọi phương thức xuất dữ liệu của trang hiện tại
+            if hasattr(self.current_page, 'export_data'):
+                self.current_page.export_data(file_type)
+            else:
+                messagebox.showwarning("Thông báo", "Chức năng xuất file chưa được hỗ trợ ở trang này")
+        else:
+            messagebox.showwarning("Thông báo", "Vui lòng chọn trang cần xuất dữ liệu")
+
+    def refresh_data(self):
+        """Làm mới dữ liệu trang hiện tại."""
+        if self.current_page:
+            if hasattr(self.current_page, 'refresh_data'):
+                self.current_page.refresh_data()
+            else:
+                messagebox.showwarning("Thông báo", "Không thể làm mới dữ liệu ở trang này")
+        else:
+            messagebox.showwarning("Thông báo", "Không có trang nào được chọn")
 
     def home_page(self):
-        HomePage(self.content_frame, self.theme_colors, self.is_dark_theme)
+        """Chuyển đến trang chủ."""
+        for widget in self.content_frame.winfo_children():
+            widget.destroy()
+        self.current_page = HomePage(self.content_frame, self.theme_colors, self.is_dark_theme)
+
+    def handle_command(self, command):
+        """Xử lý lệnh nhận diện được."""
+        if "điểm danh" in command.lower():
+            tk.messagebox.showinfo("Hành động", "Thực hiện điểm danh!")
+        elif "đóng" in command.lower():
+            self.root.destroy()
+        else:
+            tk.messagebox.showwarning("Lệnh không hợp lệ", "Không hiểu lệnh. Vui lòng thử lại.")
 
     def manager_page(self):
-        ManagerPage(self.content_frame)
+        """Chuyển đến trang quản lý."""
+        for widget in self.content_frame.winfo_children():
+            widget.destroy()
+        self.current_page = ManagerPage(self.content_frame)
+
+    def open_voice_recognition(self):
+        self.voice_window = VoiceRecognitionWindow(self)
