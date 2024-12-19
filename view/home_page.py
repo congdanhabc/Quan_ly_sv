@@ -9,13 +9,17 @@ from datetime import date, datetime
 from PIL import ImageTk, Image
 
 class HomePage:
-    def __init__(self, content_frame):
+    def __init__(self, content_frame, theme_colors, is_dark_theme):
         self.student_controller = StudentController()
         self.content_frame = content_frame
+        self.theme_colors = theme_colors
+        self.is_dark_theme = is_dark_theme
 
         for widget in self.content_frame.winfo_children():
             widget.destroy()
-        self.home_frame = tk.Frame(self.content_frame, bg="#1c1c1c")
+
+        colors = self.theme_colors["dark" if self.is_dark_theme else "light"]
+        self.home_frame = tk.Frame(self.content_frame, bg=colors["bg"])
         self.home_frame.pack(fill="both", expand=True, padx=10, pady=10)
         self.show_home_page()
         self.update_search_results()
@@ -64,6 +68,8 @@ class HomePage:
 
         columns = ("STT", "MaSinhVien", "TenSinhVien", "GioiTinh", "NgaySinh")
         self.result_tree = ttk.Treeview(result_frame, columns=columns, show="headings", style="Treeview")
+        for col in columns:
+            self.result_tree.heading(col, text=col, command=lambda _col=col: self.sort_column(_col, False))
 
         self.result_tree.heading("STT", text="STT")
         self.result_tree.heading("MaSinhVien", text="Mã sinh viên")
@@ -187,3 +193,21 @@ class HomePage:
             except Exception as e:
                 print(e)
                 tk.messagebox.showerror("Lỗi", f"Đã xảy ra lỗi khi nhập dữ liệu từ Excel:\n{e}")
+
+    def sort_column(self, col, reverse):
+        data = [(self.convert_to_number(self.result_tree.set(k, col)), k) for k in self.result_tree.get_children('')]
+        data.sort(reverse=reverse, key=lambda x: x[0])
+
+        for index, (val, k) in enumerate(data):
+            self.result_tree.move(k, '', index)
+
+        self.result_tree.heading(col, command=lambda: self.sort_column(col, not reverse))
+
+    def convert_to_number(self, value):
+        try:
+            return int(value)
+        except ValueError:
+            try:
+                return float(value)
+            except ValueError:
+                return value
