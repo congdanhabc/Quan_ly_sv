@@ -2,11 +2,29 @@ import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
 from controller.chatbot import Chatbot
+import speech_recognition as sr
+
+def transcribe_audio():
+    r = sr.Recognizer()
+    try:
+        with sr.Microphone() as source:
+            print("Đang nghe...")
+            r.adjust_for_ambient_noise(source)
+            audio = r.listen(source)
+            text = r.recognize_google(audio, language="vi-VN") # Thay đổi ngôn ngữ nếu cần
+            return text
+    except sr.WaitTimeoutError:
+        print("Hết thời gian chờ.")
+    except sr.UnknownValueError:
+        print("Không nhận diện được giọng nói.")
+    except sr.RequestError as e:
+        print(f"Lỗi từ Google Web Speech API: {e}")
+
 
 class ChatbotView:
     def __init__(self, root):
         self.root = root
-        self.chatbot = Chatbot()
+        self.chatbot = Chatbot(self.root)
         self.user_id = "customer_bot"
         
         self.chatbot_window = tk.Toplevel(root)
@@ -50,7 +68,10 @@ class ChatbotView:
         self.update_chat_display("\nChatbot: " + response)
     
     def start_speech_recognition(self):
-        self.controller.start_speech_recognition()
+        text = None
+        while text is None:
+            text = transcribe_audio()
+        self.message_entry.insert(tk.END, text)
     
     def update_chat_display(self, message):
         self.chat_display.configure(state='normal')

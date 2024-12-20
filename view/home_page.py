@@ -19,7 +19,7 @@ class HomePage:
             widget.destroy()
 
         colors = self.theme_colors["dark" if self.is_dark_theme else "light"]
-        self.home_frame = tk.Frame(self.content_frame, bg=colors["bg"])
+        self.home_frame = tk.Frame(self.content_frame, name="home_frame", bg=colors["bg"])
         self.home_frame.pack(fill="both", expand=True, padx=10, pady=10)
         self.show_home_page()
         self.update_search_results()
@@ -33,7 +33,7 @@ class HomePage:
         tk.Label(top_bar, text="Quản lý sinh viên", bg="#2c2c2c", fg="white", font=("Arial", 14)).pack(side="left", padx=10)
 
         # Tạo khung cho các chức năng
-        self.function_frame = tk.Frame(self.home_frame, bg="#1c1c1c")
+        self.function_frame = tk.Frame(self.home_frame, name="function_frame", bg="#1c1c1c")
         self.function_frame.pack(pady=20)
 
         chatbot_icon = Image.open("assets/chatbot1.png")  # Thay đổi đường dẫn icon
@@ -55,7 +55,7 @@ class HomePage:
         tk.Button(self.function_frame, text="Nhập Excel", bg="#2c2c2c", fg="white", font=("Arial", 12), width=15, command=lambda: self.import_excel()).grid(row=1, column=0, padx=10, pady=5)
         tk.Button(self.function_frame, text="Chi tiết", bg="#2c2c2c", fg="white", font=("Arial", 12), width=15, command=lambda: self.view_profile()).grid(row=1, column=1, padx=10, pady=5)
         tk.Button(self.function_frame, text="Xóa", bg="#2c2c2c", fg="white", font=("Arial", 12), width=15, command=lambda: self.delete_student()).grid(row=1, column=2, padx=10, pady=5)
-        tk.Button(self.function_frame, text="Thêm sinh viên", bg="#2c2c2c", fg="white", font=("Arial", 12), width=15, command=lambda: self.add_student_dialog()).grid(row=1, column=3, padx=10, pady=5)
+        tk.Button(self.function_frame, name="add_student", text="Thêm sinh viên", bg="#2c2c2c", fg="white", font=("Arial", 12), width=15, command=lambda: self.add_student_dialog()).grid(row=1, column=3, padx=10, pady=5)
 
         # Khu vực hiển thị kết quả với Treeview
         result_frame = tk.Frame(self.home_frame, bg="#1c1c1c")
@@ -88,6 +88,7 @@ class HomePage:
         self.result_tree.tag_configure('oddrow', background='#e6e6e6')
 
         self.result_tree.pack(fill="both", expand=True, padx=10, pady=10)
+
 
     def open_chatbot(self):
         # Tạo chatbot view với root là cửa sổ chính

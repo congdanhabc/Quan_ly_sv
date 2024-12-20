@@ -8,12 +8,13 @@ from controller.student import StudentController
 from controller.student_class import Student_ClassController
 
 # Set the OpenAI API key
-os.environ["GEMINI_API_KEY"] = "AIzaSyDlYte7TuOdjzAD1szsZrvhNQxEKr5XiAY"
+os.environ["GEMINI_API_KEY"] = "AIzaSyCjtdrGbA3pEWzQYoQo8xNKZrzZ-apNQN4"
 
 class Chatbot:
-    def __init__(self):
+    def __init__(self, root):
         self.student_controller = StudentController()
         self.student_class_controller = Student_ClassController()
+        self.root = root
 
         # Khởi tạo Memory 
         self.config = {
@@ -57,6 +58,7 @@ class Chatbot:
         3. Khác: Chọn lựa chọn này cho các câu hỏi khác không thuộc hai lựa chọn trên.
         Vui lòng trả lời bằng số thứ tự của lựa chọn (1, 2, hoặc 3) thôi nhé.
         """
+
 
     def store_customer_interaction(self,
                                  user_id: str,
@@ -107,48 +109,49 @@ class Chatbot:
     def add_student(self, query: str):
         existing_info = {}
         prompt_prefix = ''
-        while True:
-            if len(existing_info) > 0:
-                prompt_prefix = f"Thông tin hiện có:\n"
-                for key, value in existing_info.items():
-                    prompt_prefix += f"{key}: {value}\n"
+        # while True:
+        #     if len(existing_info) > 0:
+        #         prompt_prefix = f"Thông tin hiện có:\n"
+        #         for key, value in existing_info.items():
+        #             prompt_prefix += f"{key}: {value}\n"
 
-            prompt = f"""
-                    Bạn cần xác định các thông tin sau từ câu hỏi của tôi: Mã sinh viên, Họ tên, Giới tính, Ngày sinh của sinh viên.
-                    Trả lời thông tin Mã sinh viên, Họ tên, Giới tính, Ngày sinh. Nếu thông tin nào thiếu thì hãy hỏi lại tôi
-                    Sau khi có đủ thông tin, xác nhận lại thông tin người dùng.
-                    Nếu người dùng xác nhận thông tin là chính xác, phản hồi lại như ví dụ bên dưới.
-                    Ví dụ:
-                    Mã sinh viên: 0533
-                    Họ tên: Nguyễn Văn A
-                    Giới tính: Nam
-                    Ngày sinh: 05/11/2003
-                    Xác nhận thông tin: chính xác
+        prompt = f"""
+                Bạn cần xác định các thông tin sau từ câu hỏi của tôi: Mã sinh viên, Họ tên, Giới tính, Ngày sinh của sinh viên.
+                Trả lời thông tin Mã sinh viên, Họ tên, Giới tính, Ngày sinh. Nếu thông tin nào thiếu thì hãy hỏi lại tôi
+                Sau khi có đủ thông tin, xác nhận lại thông tin người dùng.
+                Nếu người dùng xác nhận thông tin là chính xác, phản hồi lại như ví dụ bên dưới.
+                Ví dụ:
+                Mã sinh viên: 0533
+                Họ tên: Nguyễn Văn A
+                Giới tính: Nam
+                Ngày sinh: 05/11/2003
+                Xác nhận thông tin: chính xác
 
-                    Nếu người dùng muốn dừng quá trình thêm sinh viên, trả lời "dừng thêm sinh viên".
+                Nếu người dùng muốn dừng quá trình thêm sinh viên, trả lời "dừng thêm sinh viên".
 
-                    {prompt_prefix}
+                Câu hỏi: {query}
+                """
+        response = self.model.generate_content(prompt)
+        response_text = response.text.strip()
+        print(response_text)
+        if "dừng thêm sinh viên" in response_text.lower():
+            return "Bạn đã dừng việc thêm sinh viên."
+        if "Xác nhận thông tin: chính xác" in response_text:
+            try:                
+                ma_sinh_vien = response_text.split("\n")[0]
+                #.split("Mã sinh viên: ", "\n")[1]
+                # ho_ten = response_text.split("Tên sinh viên: ", "\n")
+                # gioi_tinh = response_text.split("Tên sinh viên: ", "\n")
+                # ngay_sinh = response_text.split("Ngày sinh: ")
+                button = self.root.nametowidget("content_frame").nametowidget("home_frame").nametowidget("function_frame").nametowidget("add_student")
+                button.invoke()
 
-                    Câu hỏi: {query}
-                    """
-            response = self.model.generate_content(prompt)
-            response_text = response.text.strip()
-            if "dừng thêm sinh viên" in response_text.lower():
-                return "Bạn đã dừng việc thêm sinh viên."
-            if "Xác nhận thông tin: chính xác" in response_text:
-                try:
-                    ma_sinh_vien = response_text.split("Mã sinh viên: ", "\n")[1]
-                    ho_ten = response_text.split("Tên sinh viên: ", "\n")[1]
-                    gioi_tinh = response_text.split("Tên sinh viên: ", "\n")[1]
-                    ngay_sinh = response_text.split("Ngày sinh: ")[1]
-                    
-                    self.student_controller.add_student(ma_sinh_vien, ho_ten, gioi_tinh, ngay_sinh)
-                    response_text = f"Đã thêm sinh viên có mã sinh viên: {ma_sinh_vien} thành công."
-                    return response_text
-                except:
-                    response_text = "Lỗi không xác định, thêm sinh viên không thành công."
+                response_text = f"Đã thêm sinh viên có mã sinh viên: {ma_sinh_vien} thành công."
+                return response_text
+            except Exception as e:
+                response_text = "Lỗi không xác định, thêm sinh viên không thành công." + e
                              
-
+        return response_text
     def search_student(self, query: str, context: str):
         prompt = f"""
                 {context}

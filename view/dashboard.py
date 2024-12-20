@@ -40,7 +40,7 @@ class Dashboard:
         self.create_sidebar()
 
         # Tạo khung nội dung chính
-        self.content_frame = tk.Frame(self.root, bg=self.get_current_theme()["bg"])
+        self.content_frame = tk.Frame(self.root, name="content_frame", bg=self.get_current_theme()["bg"])
         self.content_frame.pack(side="right", fill="both", expand=True)
 
         # Tạo settings frame
