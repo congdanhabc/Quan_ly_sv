@@ -1,5 +1,5 @@
 **Chạy ứng dụng:**
- *   **Docker:** Cài đặt Docker Engine.
+ *   **Docker:** Cài đặt Docker Desktop.
  *   Mở terminal hoặc command prompt **tại thư mục gốc của dự án**.
  *   Lệnh chạy Qdrant:
      ```bash
